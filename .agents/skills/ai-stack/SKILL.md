@@ -1,6 +1,6 @@
 ---
 name: ai-stack
-description: Design, build, review, or debug full-stack AI agent applications using Pydantic AI for typed Python agents, AG-UI for agent-to-frontend event streaming, MCP for tools and context, A2A for agent interoperability, and CopilotKit or custom clients for user interfaces. Use when choosing an agent architecture, scaffolding an AI app, exposing a Pydantic AI agent to a frontend, implementing streaming events, tools, shared state, approvals, or generative UI.
+description: Design, build, review, or debug full-stack AI agent applications using Pydantic AI for typed Python agents, AG-UI for agent-to-frontend event streaming, PageIndex for reasoning-based document retrieval, MCP for tools and context, A2A for agent interoperability, and CopilotKit or custom clients for user interfaces. Use when choosing an agent architecture, scaffolding an AI app, exposing a Pydantic AI agent to a frontend, implementing RAG, streaming events, tools, shared state, approvals, or generative UI.
 ---
 
 # AI Stack
@@ -15,6 +15,7 @@ Use this stack unless the project already establishes alternatives:
 - **Agent-to-user protocol:** AG-UI.
 - **Frontend client:** CopilotKit for a production-ready UI, or `@ag-ui/client` for a custom client.
 - **Tools and context:** native Pydantic AI tools; use MCP when tools must be independently discoverable or shared.
+- **Document retrieval:** PageIndex when long, structured documents benefit from hierarchical, reasoning-based retrieval. Keep conventional vector or hybrid retrieval when measurements show it fits better.
 - **Agent-to-agent communication:** A2A only when agents cross process, team, or ownership boundaries.
 - **Transport:** HTTP with Server-Sent Events for the first implementation. Use WebSockets only when SSE plus normal HTTP requests cannot satisfy bidirectional requirements.
 - **Schemas:** Pydantic models in Python and generated or explicitly synchronized TypeScript types at the frontend boundary.
@@ -33,6 +34,22 @@ Do not conflate the protocols:
 3. Prefer an existing AG-UI integration for the selected framework over a custom protocol adapter.
 4. Confirm current package APIs from installed versions or official documentation; do not invent imports or pin stale versions from memory.
 5. Define ownership of conversation history and shared state. Avoid keeping competing sources of truth in the browser and agent runtime.
+6. If retrieval is required, evaluate representative documents and questions before selecting PageIndex, vector search, keyword search, or a hybrid.
+
+## Document retrieval with PageIndex
+
+Use [PageIndex](https://github.com/VectifyAI/PageIndex) for document-heavy workloads where structure, section context, and traceable page-level retrieval matter, such as financial reports, legal documents, regulatory filings, technical manuals, and academic material.
+
+PageIndex builds a hierarchical tree index and performs reasoning-based tree search without requiring document chunks or a vector database. It can run from the open-source repository or through its API or MCP service.
+
+Integration options:
+
+- Wrap self-hosted PageIndex retrieval in a typed Pydantic AI tool when it belongs to one application.
+- Use the PageIndex MCP server when multiple agents or clients should discover and reuse the retrieval capability.
+- Use the hosted API when its OCR and managed indexing fit the project's data, privacy, latency, and cost constraints.
+- Return source document IDs, section paths, and page ranges from retrieval tools so answers can cite evidence.
+
+Do not assume vectorless retrieval is better for every corpus. Compare answer correctness, retrieval recall, citation quality, indexing cost, query latency, and operational complexity against a relevant baseline. Treat repository benchmark claims as vendor-reported until reproduced on the project's data.
 
 ## Implementation sequence
 
@@ -72,7 +89,8 @@ Use interrupts for consequential or underspecified actions such as payments, del
 - Keep model and service credentials server-side.
 - Validate all user messages, attachments, tool arguments, state patches, interrupt payloads, and generated UI schemas.
 - Apply tool allowlists and per-user authorization on the server; frontend filtering is not a security boundary.
-- Bound attachment size, run duration, tool iterations, concurrency, and output size.
+- Bound attachment size, document size, index depth, run duration, tool iterations, concurrency, and output size.
+- Apply document-level authorization before retrieval and before returning source text; never rely on the model to enforce access controls.
 - Log IDs, timings, event types, tool outcomes, and errors without logging secrets or sensitive reasoning.
 - Make side-effecting tools idempotent where possible and use confirmation gates where not.
 
@@ -81,6 +99,7 @@ Use interrupts for consequential or underspecified actions such as payments, del
 Cover at least:
 
 - Typed agent behavior and tool validation.
+- Retrieval quality on a representative question set, including citations and access-control boundaries.
 - Exact event ordering for text and tool streams.
 - State snapshot/delta application.
 - Interrupt, approval, rejection, edit, and resume paths.
@@ -96,6 +115,7 @@ Prefer current official documentation:
 - AG-UI: https://docs.ag-ui.com/
 - AG-UI specification and SDKs: https://github.com/ag-ui-protocol/ag-ui
 - Pydantic AI: https://ai.pydantic.dev/
+- PageIndex: https://github.com/VectifyAI/PageIndex
 - Pydantic AI + CopilotKit/AG-UI: https://docs.copilotkit.ai/pydantic-ai/
 - AG-UI Pydantic AI demo: https://dojo.ag-ui.com/pydantic-ai/feature/shared_state
 - MCP: https://modelcontextprotocol.io/
