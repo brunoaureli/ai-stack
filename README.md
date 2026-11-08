@@ -154,6 +154,22 @@ Start with the smallest relevant source, not a random package import:
 
 Use the concise installable [skill](.agents/skills/ai-stack/SKILL.md) for implementation guardrails. Use this guide for design review, onboarding, and trade-off discussions.
 
+## Browser control for agents (OpenCode Browse)
+
+OpenCode Browse (`@opencode/browse`, announced 2026-11-07) is the default browser tool in this stack. It is an MCP server plus a Chromium extension that lets an agent drive the user's real browser, with their tabs, logins and extensions, in background tabs. It replaces `agent-browser` for these agents.
+
+```sh
+npm install -g @opencode/browse
+browse install --agent opencode --agent claude --agent codex
+browse pair   # only if the extension did not pair automatically
+```
+
+- Install the Chrome extension from the Chrome Web Store when prompted; Brave, Edge, Arc and other Chromium browsers also work.
+- `browse install` writes the MCP entry to the OpenCode config, `~/.claude.json` and `~/.codex/config.toml`.
+- Pi has no installer flag; add `{"mcpServers":{"browse":{"command":"browse","args":["mcp"]}}}` through an MCP adapter if one is installed.
+- Each agent's global instructions say to prefer `browse` and fall back to `agent-browser` only when it fails.
+- Treat it as a user authorization boundary: use a separate browser profile, set a site allowlist, and hand the tab back to the user for logins, 2FA and payments.
+
 ## Install the skill
 
 The canonical skill is at .agents/skills/ai-stack/SKILL.md.

@@ -119,3 +119,10 @@ Official documentation supports intended behavior and integration contracts. It 
 - Vendor benchmarks, launch posts, and success stories are useful leads, not evidence that a component is correct or economical for this application.
 - Generic agent-stack diagrams rarely describe state ownership, authorization, cancellation, or data retention and should not be copied as architecture.
 - A current documentation page can drift. Pin dependencies, record the tested version, and link exact release documentation in an implementation PR.
+
+### S99: OpenCode Browse
+
+- Documentation: <https://opencode.ai/product/browse>
+- Source: <https://github.com/anomalyco/browse>
+- Purpose: MCP server and Chromium extension for agent control of the user's real browser; default browser tool for OpenCode, Claude Code and Codex here.
+- Limitation: it acts with the user's logged-in sessions, so scope it with a separate profile and allowlist; Pi support is manual.
