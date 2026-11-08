@@ -1,6 +1,6 @@
 ---
 name: ai-stack
-description: Design, build, review, or debug full-stack AI agent applications using Pydantic AI for typed Python agents, AG-UI for agent-to-frontend event streaming, PageIndex for reasoning-based document retrieval, MCP for tools and context, A2A for agent interoperability, and CopilotKit or custom clients for user interfaces. Use when choosing an agent architecture, scaffolding an AI app, exposing a Pydantic AI agent to a frontend, implementing RAG, streaming events, tools, shared state, approvals, or generative UI.
+description: Design, build, review, or debug full-stack AI agent applications using Pydantic AI for typed Python agents, AG-UI for agent-to-frontend event streaming, PageIndex for reasoning-based document retrieval, MCP for tools and context, A2A for agent interoperability, CopilotKit or custom clients for user interfaces, Turso for durable application and agent state, and OpenTelemetry-compatible telemetry and evaluation. Use when choosing an agent architecture, scaffolding an AI app, exposing a Pydantic AI agent to a frontend, implementing RAG, streaming events, tools, persistence, observability, evaluations, shared state, approvals, or generative UI.
 ---
 
 # AI Stack
@@ -17,6 +17,8 @@ Use this stack unless the project already establishes alternatives:
 - **Tools and context:** native Pydantic AI tools; use MCP when tools must be independently discoverable or shared.
 - **Document retrieval:** PageIndex when long, structured documents benefit from hierarchical, reasoning-based retrieval. Keep conventional vector or hybrid retrieval when measurements show it fits better.
 - **Agent-to-agent communication:** A2A only when agents cross process, team, or ownership boundaries.
+- **Persistence:** Turso for SQLite-compatible application data, conversation history, checkpoints, approvals, and audit records. Select Turso Cloud, embedded Turso Database, or AgentFS according to deployment and state-access needs.
+- **Telemetry and evaluation:** OpenTelemetry-compatible traces, metrics, and structured logs with safe Pydantic AI instrumentation; maintain a versioned evaluation set for answers, citations, tools, and policy outcomes.
 - **Transport:** HTTP with Server-Sent Events for the first implementation. Use WebSockets only when SSE plus normal HTTP requests cannot satisfy bidirectional requirements.
 - **Schemas:** Pydantic models in Python and generated or explicitly synchronized TypeScript types at the frontend boundary.
 
@@ -35,6 +37,8 @@ Do not conflate the protocols:
 4. Confirm current package APIs from installed versions or official documentation; do not invent imports or pin stale versions from memory.
 5. Define ownership of conversation history and shared state. Avoid keeping competing sources of truth in the browser and agent runtime.
 6. If retrieval is required, evaluate representative documents and questions before selecting PageIndex, vector search, keyword search, or a hybrid.
+7. If persistence is required, decide whether the application needs managed remote data, embedded or offline data, synchronization, or filesystem-shaped agent state before selecting a Turso product and client.
+8. Define trace propagation, stable correlation IDs, safe telemetry attributes, alert conditions, and evaluation gates before adding consequential autonomy.
 
 ## Document retrieval with PageIndex
 
@@ -51,6 +55,19 @@ Integration options:
 
 Do not assume vectorless retrieval is better for every corpus. Compare answer correctness, retrieval recall, citation quality, indexing cost, query latency, and operational complexity against a relevant baseline. Treat repository benchmark claims as vendor-reported until reproduced on the project's data.
 
+## Persistence with Turso
+
+Use [Turso](https://docs.turso.tech/introduction) as the default persistence option when an AI application benefits from a SQLite-compatible relational model:
+
+- Use Turso Cloud or an official libSQL-compatible client for managed application data, remote conversation history, run metadata, checkpoints, approvals, and audit records.
+- Use embedded Turso Database for on-device, browser, local-first, or offline data. Add Turso Sync only when local reads and writes must synchronize with the cloud.
+- Evaluate AgentFS when an agent specifically needs filesystem-shaped state and built-in auditability; do not treat it as an automatic replacement for relational application tables.
+- Store stable thread, run, message, tool-call, interrupt, and user IDs so persisted records can be correlated with AG-UI events.
+- Make checkpoint and side-effect records transactional and resumption idempotent. Apply per-user or per-tenant authorization before every read and write.
+- Set retention rules for message content, tool payloads, attachments, and audit data. Never persist credentials or private chain-of-thought.
+
+Turso persistence and PageIndex retrieval solve different problems. Store application and agent state in Turso; use PageIndex for hierarchical retrieval over long structured documents. If Turso vector search is considered for RAG, benchmark it as a separate retrieval design rather than silently replacing PageIndex.
+
 ## Implementation sequence
 
 1. Define typed Pydantic input, output, dependency, tool-argument, and state models.
@@ -64,6 +81,7 @@ Do not assume vectorless retrieval is better for every corpus. Compare answer co
 5. Connect the frontend using CopilotKit or an AG-UI client and render events incrementally.
 6. Add tools, approvals, shared state, multimodal input, and generative UI one capability at a time.
 7. Add authentication, authorization, cancellation, timeouts, tracing, and persistence before production rollout.
+8. Send ingestion, indexing, and work that must outlive an HTTP request to a bounded queue or durable workflow; an SSE connection is not a job executor.
 
 ## Event-stream rules
 
@@ -92,6 +110,8 @@ Use interrupts for consequential or underspecified actions such as payments, del
 - Bound attachment size, document size, index depth, run duration, tool iterations, concurrency, and output size.
 - Apply document-level authorization before retrieval and before returning source text; never rely on the model to enforce access controls.
 - Log IDs, timings, event types, tool outcomes, and errors without logging secrets or sensitive reasoning.
+- Propagate `trace_id` alongside stable thread, run, message, tool-call, interrupt, actor, and tenant IDs. Treat trace context as observability metadata, never as authorization.
+- Enforce input and output budgets, per-user/tenant quotas, concurrency limits, timeouts, and cancellation for models, tools, retrieval, files, and background work.
 - Make side-effecting tools idempotent where possible and use confirmation gates where not.
 
 ## Testing
@@ -100,6 +120,8 @@ Cover at least:
 
 - Typed agent behavior and tool validation.
 - Retrieval quality on a representative question set, including citations and access-control boundaries.
+- Telemetry correlation across the HTTP request, AG-UI run, model, tools, retrieval, persistence, and background work, with sensitive content redacted or excluded.
+- Versioned evaluations for expected answers, citations, tool choice, policy/refusal outcomes, latency, and cost.
 - Exact event ordering for text and tool streams.
 - State snapshot/delta application.
 - Interrupt, approval, rejection, edit, and resume paths.
@@ -110,18 +132,34 @@ Use the AG-UI Dojo as an interoperability checklist when implementing or debuggi
 
 ## Documentation references
 
-Prefer current official documentation:
+Prefer current official documentation and inspect the upstream repository when implementation details are not covered by the docs:
 
-- AG-UI: https://docs.ag-ui.com/
-- AG-UI specification and SDKs: https://github.com/ag-ui-protocol/ag-ui
-- Pydantic AI: https://ai.pydantic.dev/
-- PageIndex: https://github.com/VectifyAI/PageIndex
+| Component | Documentation | Source repository |
+| --- | --- | --- |
+| Pydantic AI | https://ai.pydantic.dev/ | https://github.com/pydantic/pydantic-ai |
+| AG-UI | https://docs.ag-ui.com/ | https://github.com/ag-ui-protocol/ag-ui |
+| PageIndex | Repository README and examples | https://github.com/VectifyAI/PageIndex |
+| MCP | https://modelcontextprotocol.io/ | https://github.com/modelcontextprotocol/modelcontextprotocol |
+| A2A | https://a2a-protocol.org/ | https://github.com/a2aproject/A2A |
+| CopilotKit | https://docs.copilotkit.ai/ | https://github.com/CopilotKit/CopilotKit |
+| Turso | https://docs.turso.tech/introduction | https://github.com/tursodatabase/turso |
+| OpenTelemetry | https://opentelemetry.io/docs/ | https://github.com/open-telemetry/opentelemetry-specification |
+
+Integration-specific references:
+
 - Pydantic AI + CopilotKit/AG-UI: https://docs.copilotkit.ai/pydantic-ai/
 - AG-UI Pydantic AI demo: https://dojo.ag-ui.com/pydantic-ai/feature/shared_state
-- MCP: https://modelcontextprotocol.io/
-- A2A: https://a2a-protocol.org/
+- Turso documentation index: https://docs.turso.tech/llms.txt
+- Turso Python SDK quickstart: https://docs.turso.tech/sdk/python/quickstart
+- AgentFS Python SDK: https://docs.turso.tech/agentfs/sdk/python
+- Turso Cloud MCP integration: https://docs.turso.tech/integrations/mcp
+- OpenTelemetry GenAI semantic conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/
+- Pydantic Evals: https://pydantic.dev/docs/ai/evals/evals/
+- Pydantic Logfire documentation index: https://pydantic.dev/docs/logfire/llms.txt
 
 The repository root also contains `agui-docs.md`, a local AG-UI documentation snapshot. Search targeted sections rather than loading the whole file, and verify version-sensitive details against current official docs.
+
+For a human-facing architecture guide, a fetch-first documentation ledger, and the exact scope of repository checks, read the repository-root `README.md`, `SOURCES.md`, and `VALIDATION.md`.
 
 ## Expected response shape
 
